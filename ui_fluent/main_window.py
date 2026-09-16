@@ -11,6 +11,7 @@ from qfluentwidgets import (
 
 from backend.everything_cli import EverythingCLI
 from backend.scanner_engine import ScannerEngine
+from ui_fluent.uninstaller_interface import UninstallerInterface
 from ui_fluent.scanner_interface import ScannerInterface
 from ui_fluent.whitelist_interface import WhitelistInterface
 from ui_fluent.settings_interface import SettingsInterface
@@ -39,9 +40,12 @@ class MainWindow(MSFluentWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("AppData Orphan Cleaner — Powered by Everything CLI")
-        self.resize(1120, 760)
-        self.setMinimumSize(940, 600)
+        # Set dark theme immediately so all child widgets inherit the correct palette
+        setTheme(Theme.DARK)
+
+        self.setWindowTitle("AppData Cleaner & Uninstaller — Powered by Everything CLI")
+        self.resize(1160, 780)
+        self.setMinimumSize(960, 620)
 
         icon_path = _get_icon_path()
         if icon_path:
@@ -52,6 +56,7 @@ class MainWindow(MSFluentWindow):
         self.scanner = ScannerEngine(self.everything_cli)
 
         # Sub-interfaces
+        self.uninstaller_interface = UninstallerInterface(self.everything_cli, self)
         self.scanner_interface = ScannerInterface(self.scanner, self)
         self.whitelist_interface = WhitelistInterface(self.scanner.whitelist_manager, self)
         self.settings_interface = SettingsInterface(
@@ -63,17 +68,25 @@ class MainWindow(MSFluentWindow):
         self._init_navigation()
 
     def _init_navigation(self):
-        # Add navigation items
+        # 1. Uninstaller (Primary Revo / IObit style with targeted leftover purge)
+        self.addSubInterface(
+            self.uninstaller_interface,
+            FIF.APPLICATION,
+            "Uninstaller"
+        )
+        # 2. Heuristic Orphan Scanner
         self.addSubInterface(
             self.scanner_interface,
-            FIF.SEARCH,
-            "Scanner"
+            FIF.FOLDER,
+            "Orphan Scanner"
         )
+        # 3. Whitelist Manager
         self.addSubInterface(
             self.whitelist_interface,
             FIF.ACCEPT,
             "Whitelist"
         )
+        # 4. Settings & Diagnostics
         self.addSubInterface(
             self.settings_interface,
             FIF.SETTING,

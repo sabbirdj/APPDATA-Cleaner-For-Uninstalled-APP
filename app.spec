@@ -29,6 +29,9 @@ hiddenimports = [
     'send2trash',
     'darkdetect',
     'packaging',
+    'backend.app_manager',
+    'backend.leftover_scanner',
+    'ui_fluent.uninstaller_interface',
 ]
 
 a = Analysis(

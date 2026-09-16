@@ -39,11 +39,25 @@ Traditional cleaner utilities either rely on slow recursive file crawling or bli
 
 ## ✨ Key Features
 
+- **🚀 IObit & Revo-Style Application Uninstaller (Zero False Positives)**:
+  - **Comprehensive Program Dashboard**: Scans 32-bit & 64-bit Windows Registry databases to list all installed desktop applications with real icons, versions, publishers, install dates, and true disk sizes.
+  - **Automated 2-Stage Uninstallation**:
+    1. Launches the official built-in uninstaller (`UninstallString` or `MsiExec.exe /x`).
+    2. Automatically waits for completion and triggers a **Deep Post-Uninstall Leftover Scan**.
+  - **Targeted Remnant Discovery**: Searches for residual files, AppData (`Roaming`, `Local`, `LocalLow`), `ProgramData`, and Registry entries (`HKCU` & `HKLM`) specifically belonging to that uninstalled program.
+  - **Targeted Leftover Search for Past Uninstalls**: Easily search and purge leftover AppData and Registry keys for any software uninstalled in the past (e.g. *Zoom*, *Brother*, *IDM*, *Discord*).
+
+<div align="center">
+  <img src="assets/uninstaller_dashboard.png" alt="Application Uninstaller Dashboard" width="90%" />
+  <br/><br/>
+  <img src="assets/leftover_dialog.png" alt="Targeted Leftovers Review & Cleanup Dialog" width="80%" />
+</div>
+
 - **🎨 Modern Windows 11 Fluent UI**:
   - Implements native Fluent Design specifications via `PyQt6-Fluent-Widgets`.
   - Acrylic/Mica surfaces, smooth animations, and Segoe Fluent iconography.
   - Seamless live theme switching (**Dark Mode**, **Light Mode**, or **System Synchronized**).
-  - Responsive multi-tier control bar with adaptive search and segmented category filters.
+  - Responsive control ribbons, search bars, and interactive metric cards.
 
 - **⚡ Instant Voidtools Everything CLI (`es.exe`) Integration**:
   - Queries the NTFS Master File Table (MFT) and USN Journal in single-digit milliseconds.
@@ -55,7 +69,7 @@ Traditional cleaner utilities either rely on slow recursive file crawling or bli
   - **Acronym & Vendor Resolution**: Intelligently resolves abbreviations (e.g. `IDM` $\leftrightarrow$ *Internet Download Manager*) and vendor subdirectories (e.g. `Daum\PotPlayer`).
 
 - **🔄 Real-Time Live Streaming & Continuation Scanning**:
-  - Folders stream into the results table one by one in real-time as they are analyzed.
+  - Heuristic scanner streams AppData folders one by one in real-time as they are analyzed.
   - **Continuation Scanning ("Scan from where it left")**: Check additional targets (e.g., `LocalLow` or `ProgramData`) and only the newly checked targets are scanned without losing existing findings or selections.
   - Dedicated **"New Scan"** button to start fresh at any time.
 
