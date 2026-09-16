@@ -1,0 +1,6 @@
+PyQt6>=6.6.0
+PyQt6-Fluent-Widgets[full]>=1.7.0
+customtkinter>=5.2.0
+send2trash>=2.0.0
+darkdetect>=0.8.0
+packaging>=23.0

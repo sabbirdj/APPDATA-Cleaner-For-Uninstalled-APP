@@ -1,0 +1,34 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller & Compiler Build Artifacts
+build/
+dist/
+installer_output/
+*.spec.bak
+*.iss.bak
+
+# Bundled Binaries & Local Caches
+bin/
+*.exe
+!assets/*.ico
+
+# User Personal Settings & Local Data
+user_whitelist.json
+*.log
+
+# Environments & Virtual Envs
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE & Editor metadata
+.vscode/
+.idea/
+.gemini/
+*.suo
+*.user
