@@ -16,7 +16,8 @@
 [Architecture](#-how-it-works) •
 [Installation & Usage](#-installation--quick-start) •
 [Building from Source](#-building-the-native-executable--installer) •
-[Safety Engine](#-triple-signal-safety-engine)
+[⚠️ Safety Warning](#️-safety-guidelines--deletion-warning) •
+[License](#-license)
 
 </div>
 
@@ -208,10 +209,30 @@ python -m unittest discover tests
 
 ---
 
-## 🛡️ Safety & Disclaimer
+## ⚠️ Safety Guidelines & Deletion Warning
 
-> [!CAUTION]
-> While **AppData Orphan Cleaner** incorporates a multi-layer verification engine, always review selected folders before deletion. By default, items are sent to the **Windows Recycle Bin** so that any accidental deletion can be immediately restored. The authors and contributors are not responsible for any data loss.
+> [!WARNING]
+> ### 🛑 PLEASE READ CAREFULLY BEFORE DELETING ANY FILES OR FOLDERS
+> 
+> While **AppData Orphan Cleaner** employs a rigorous triple-signal verification engine (NTFS journal indexing, Windows Registry uninstaller cross-referencing, and system keyword filtering), **AppData folders often contain user settings, local databases, game save files, login sessions, and application cache.**
+> 
+> 1. **Always Review the Selection List**:
+>    - Before clicking any cleanup button, inspect the folders checked in the results table.
+>    - If you recognize a software title you still use—or might reinstall in the future—**uncheck it** or click the **Whitelist** button to permanently exclude it from future scans.
+> 
+> 2. **Prefer "Move Selected to Recycle Bin (Safe)"**:
+>    - Always default to **Move Selected to Recycle Bin (Safe)**.
+>    - Items sent to the Windows Recycle Bin can be immediately restored with right-click > **Restore** if you later discover a program required that folder.
+> 
+> 3. **Use "Permanently Delete" with Extreme Caution**:
+>    - Permanent deletion bypasses the Windows Recycle Bin and purges files directly from your storage device.
+>    - **Permanently deleted data cannot be undone or recovered via the Recycle Bin.** Only use this option when you are 100% confident that the data is abandoned and you must reclaim drive space immediately.
+> 
+> 4. **Backup Critical Data First**:
+>    - We strongly advise creating a backup of your important `AppData\Roaming` and `AppData\Local` folders (especially web browser profiles, cryptocurrency wallets, developer SSH keys, and game saves) before performing any bulk cleanup operations.
+> 
+> 5. **Disclaimer of Liability**:
+>    - This software is provided *"as is"*, without warranty of any kind, express or implied. Under no circumstances shall the authors or copyright holders be held liable for any data loss, system corruption, or other damages arising from the use of this software. You are solely responsible for reviewing and verifying the files you choose to delete.
 
 ---
 
