@@ -78,3 +78,27 @@ coll = COLLECT(
     upx_exclude=[],
     name='AppDataOrphanCleaner',
 )
+
+# 2. Single-File Standalone Portable Executable (Run anywhere without missing DLLs)
+exe_single = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name='AppDataOrphanCleaner_Portable',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon='assets/app_icon.ico',
+)

@@ -91,6 +91,10 @@ def step_pyinstaller():
             shutil.copy2(src_es, dst_es)
             print("  -> Placed es.exe at root of dist folder")
 
+    # Clean intermediate build directory to prevent confusing stub executables
+    build_dir = os.path.join(PROJECT_ROOT, "build")
+    shutil.rmtree(build_dir, ignore_errors=True)
+
 def step_inno_setup():
     print("\n[4/4] Building Windows Installer with Inno Setup...")
     iscc_path = find_iscc()
@@ -123,20 +127,32 @@ def main():
     print("      AppData Orphan Cleaner — Release Build Pipeline")
     print("=" * 65)
     
+    # Pre-clean build directory
+    shutil.rmtree(os.path.join(PROJECT_ROOT, "build"), ignore_errors=True)
+
     step_generate_assets()
     step_prepare_binaries()
     step_pyinstaller()
     step_inno_setup()
 
+    # Post-clean intermediate build directory
+    shutil.rmtree(os.path.join(PROJECT_ROOT, "build"), ignore_errors=True)
+
     print("\n" + "=" * 65)
     print(" BUILD COMPLETE!")
     print("=" * 65)
-    dist_exe = os.path.join(PROJECT_ROOT, "dist", "AppDataOrphanCleaner", "AppDataOrphanCleaner.exe")
+    portable_exe = os.path.join(PROJECT_ROOT, "dist", "AppDataOrphanCleaner_Portable.exe")
+    dist_dir = os.path.join(PROJECT_ROOT, "dist", "AppDataOrphanCleaner")
     installer_exe = os.path.join(PROJECT_ROOT, "installer_output", "AppDataOrphanCleaner_Setup_v1.0.0.exe")
-    if os.path.isfile(dist_exe):
-        print(f"  [OK] Standalone App: {dist_exe}")
+
+    if os.path.isfile(portable_exe):
+        size_mb = os.path.getsize(portable_exe) / (1024 * 1024)
+        print(f"  [OK] Portable Single-File: {portable_exe} ({size_mb:.1f} MB)")
+    if os.path.isdir(dist_dir):
+        print(f"  [OK] Installed App Bundle: {dist_dir}")
     if os.path.isfile(installer_exe):
-        print(f"  [OK] Windows Setup:  {installer_exe}")
+        size_mb = os.path.getsize(installer_exe) / (1024 * 1024)
+        print(f"  [OK] Windows Setup Setup:  {installer_exe} ({size_mb:.1f} MB)")
     print("=" * 65)
 
 if __name__ == "__main__":
