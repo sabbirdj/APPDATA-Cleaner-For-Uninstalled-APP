@@ -32,6 +32,28 @@ class TestAppManager(unittest.TestCase):
         silent_cmd = app.get_effective_uninstall_command(silent=True)
         self.assertIn("/qn", silent_cmd.lower())
 
+    def test_clean_icon_path_with_quotes_and_index(self):
+        # Even with quotes and comma index, should clean and resolve existing file
+        explorer_path = r"C:\Windows\explorer.exe"
+        app = InstalledApp(
+            name="Explorer Test",
+            icon_path=f'"{explorer_path}",0'
+        )
+        cleaned = app.clean_icon_path()
+        self.assertEqual(cleaned, explorer_path)
+
+    def test_shortcut_index_loaded(self):
+        # AppManager should index Start Menu shortcuts
+        self.assertIsInstance(self.manager.shortcuts, list)
+        self.assertGreater(len(self.manager.shortcuts), 0)
+
+    def test_resolved_icon_discovery(self):
+        # Check that high percentage of installed apps have resolved icons
+        apps = self.manager.refresh()
+        resolved = [a for a in apps if a.resolved_icon_path]
+        # At least 85% of real installed apps on system should resolve an icon
+        self.assertGreater(len(resolved) / len(apps), 0.85)
+
 class TestLeftoverScanner(unittest.TestCase):
     def setUp(self):
         self.scanner = LeftoverScanner()

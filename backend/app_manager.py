@@ -3,7 +3,7 @@ import re
 import shlex
 import subprocess
 import winreg
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 
 class InstalledApp:
     def __init__(
@@ -18,7 +18,8 @@ class InstalledApp:
         size_kb: int = 0,
         install_date: str = "",
         registry_key: str = "",
-        registry_hive: str = ""
+        registry_hive: str = "",
+        resolved_icon_path: str = ""
     ):
         self.name = name
         self.version = version
@@ -31,6 +32,7 @@ class InstalledApp:
         self.install_date = install_date
         self.registry_key = registry_key
         self.registry_hive = registry_hive
+        self.resolved_icon_path = resolved_icon_path
 
     @property
     def size_bytes(self) -> int:
@@ -40,12 +42,18 @@ class InstalledApp:
         """Returns clean path to .ico or .exe for icon extraction."""
         if not self.icon_path:
             return None
-        clean = self.icon_path.strip().strip('"\'')
-        # Strip index suffix like ,0 or ,-1
+        clean = self.icon_path.strip()
+        # Strip index suffix like ,0 or ,-1 before removing quotes
         if "," in clean:
             clean = clean.split(",")[0].strip()
+        clean = clean.strip('"\'')
         if os.path.isfile(clean):
             return clean
+        # Check for 64-bit executable sibling (e.g. studio.exe -> studio64.exe)
+        if clean.lower().endswith(".exe"):
+            c64 = clean[:-4] + "64.exe"
+            if os.path.isfile(c64):
+                return c64
         return None
 
     def get_effective_uninstall_command(self, silent: bool = False) -> str:
@@ -71,11 +79,93 @@ class AppManager:
 
     def __init__(self):
         self.apps: List[InstalledApp] = []
+        self.shortcuts: List[Tuple[str, str]] = []
         self.refresh()
+
+    def _build_shortcut_index(self):
+        """Indexes Start Menu shortcuts (.lnk) for icon discovery."""
+        self.shortcuts = []
+        start_dirs = [
+            os.path.expandvars(r"%APPDATA%\Microsoft\Windows\Start Menu\Programs"),
+            os.path.expandvars(r"%ProgramData%\Microsoft\Windows\Start Menu\Programs"),
+        ]
+        for sdir in start_dirs:
+            if os.path.isdir(sdir):
+                for root, _, files in os.walk(sdir):
+                    for f in files:
+                        if f.lower().endswith(".lnk"):
+                            base = os.path.splitext(f)[0]
+                            self.shortcuts.append((base, os.path.join(root, f)))
+
+    def _resolve_app_icon(self, app: InstalledApp) -> Optional[str]:
+        """
+        5-tier resolution hierarchy to locate application icon:
+        1. Registry DisplayIcon (via clean_icon_path)
+        2. InstallLocation search for .ico or main .exe
+        3. UninstallString parent dir search for .ico or main .exe
+        4. Start Menu shortcuts matching app name (exact normalized)
+        5. Start Menu shortcuts matching app name (fuzzy / substring)
+        """
+        # Tier 1: Direct clean DisplayIcon
+        cand = app.clean_icon_path()
+        if cand:
+            return cand
+
+        # Tier 2: Check InstallLocation
+        if app.install_location and os.path.isdir(app.install_location):
+            try:
+                for item in os.listdir(app.install_location):
+                    ilow = item.lower()
+                    if ilow.endswith(".ico"):
+                        return os.path.join(app.install_location, item)
+                    elif ilow.endswith(".exe") and not any(x in ilow for x in ["unins", "update", "setup", "helper", "crash"]):
+                        return os.path.join(app.install_location, item)
+            except Exception:
+                pass
+
+        # Tier 3: Check UninstallString directory
+        if app.uninstall_string:
+            m = re.match(r'^\s*"([^"]+)"', app.uninstall_string) or re.match(r'^\s*([^\s,]+)', app.uninstall_string)
+            if m:
+                u_path = m.group(1)
+                if os.path.isfile(u_path):
+                    u_dir = os.path.dirname(u_path)
+                    try:
+                        for item in os.listdir(u_dir):
+                            ilow = item.lower()
+                            if ilow.endswith(".ico"):
+                                return os.path.join(u_dir, item)
+                            elif ilow.endswith(".exe") and not any(x in ilow for x in ["unins", "update", "setup", "helper"]):
+                                return os.path.join(u_dir, item)
+                    except Exception:
+                        pass
+
+        # Tier 4 & 5: Start Menu shortcuts
+        norm_app = re.sub(r'[^a-z0-9]', '', app.name.lower())
+        if norm_app:
+            # Pass 1: exact normalized match
+            for s_base, s_path in self.shortcuts:
+                norm_base = re.sub(r'[^a-z0-9]', '', s_base.lower())
+                if "uninstall" in norm_base:
+                    continue
+                if norm_app == norm_base:
+                    return s_path
+
+            # Pass 2: substring match (longer name starts with or contains)
+            if len(norm_app) >= 4:
+                for s_base, s_path in self.shortcuts:
+                    norm_base = re.sub(r'[^a-z0-9]', '', s_base.lower())
+                    if any(x in norm_base for x in ["uninstall", "documentation", "website", "prompt", "help"]):
+                        continue
+                    if norm_app in norm_base or norm_base in norm_app:
+                        return s_path
+
+        return None
 
     def refresh(self) -> List[InstalledApp]:
         """Scans Windows Registry for all user-visible installed applications."""
         self.apps.clear()
+        self._build_shortcut_index()
         seen_keys = set()
 
         roots = [
@@ -105,6 +195,10 @@ class AppManager:
             except EnvironmentError:
                 continue
 
+        # Resolve icons for all discovered applications
+        for app in self.apps:
+            app.resolved_icon_path = self._resolve_app_icon(app) or ""
+
         # Sort alphabetically by app name
         self.apps.sort(key=lambda x: x.name.lower())
         return self.apps
@@ -130,6 +224,8 @@ class AppManager:
         if get_val("ParentKeyName"):
             return None
         if name_str.startswith("KB") and len(name_str) <= 10 and name_str[2:].isdigit():
+            return None
+        if re.search(r'\bKB\d{6,}\b', name_str) and any(x in name_str.lower() for x in ["update for", "security update", "hotfix"]):
             return None
 
         # Uninstall strings

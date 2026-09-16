@@ -69,30 +69,37 @@ class MainWindow(MSFluentWindow):
 
     def _init_navigation(self):
         # 1. Uninstaller (Primary Revo / IObit style with targeted leftover purge)
-        self.addSubInterface(
+        item_uninst = self.addSubInterface(
             self.uninstaller_interface,
             FIF.APPLICATION,
-            "Uninstaller"
+            "Uninstall"
         )
+        item_uninst.setToolTip("Application Uninstaller & Leftover Removal")
+
         # 2. Heuristic Orphan Scanner
-        self.addSubInterface(
+        item_scan = self.addSubInterface(
             self.scanner_interface,
             FIF.FOLDER,
-            "Orphan Scanner"
+            "Scanner"
         )
+        item_scan.setToolTip("Orphan Leftover Scanner & Cache Cleaner")
+
         # 3. Whitelist Manager
-        self.addSubInterface(
+        item_white = self.addSubInterface(
             self.whitelist_interface,
             FIF.ACCEPT,
             "Whitelist"
         )
+        item_white.setToolTip("Protected Paths & Whitelist")
+
         # 4. Settings & Diagnostics
-        self.addSubInterface(
+        item_sett = self.addSubInterface(
             self.settings_interface,
             FIF.SETTING,
             "Settings",
             position=NavigationItemPosition.BOTTOM
         )
+        item_sett.setToolTip("Application Settings & Diagnostics")
 
         # Default to dark theme
         setTheme(Theme.DARK)

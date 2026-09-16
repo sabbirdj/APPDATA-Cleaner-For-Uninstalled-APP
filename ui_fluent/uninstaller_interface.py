@@ -1,12 +1,12 @@
 import os
 import sys
-from typing import List, Optional
+from typing import List, Optional, Dict
 
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize, QFileInfo
 from PyQt6.QtGui import QIcon, QColor
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QHeaderView, QTableWidgetItem,
-    QAbstractItemView, QLabel, QSizePolicy, QDialog
+    QAbstractItemView, QLabel, QSizePolicy, QDialog, QFileIconProvider
 )
 from qfluentwidgets import (
     TableWidget, PrimaryPushButton, PushButton, SearchLineEdit,
@@ -20,6 +20,47 @@ from backend.app_manager import AppManager, InstalledApp
 from backend.leftover_scanner import LeftoverScanner, LeftoverItem
 from backend.everything_cli import EverythingCLI
 from ui_fluent.formatters import format_size
+
+_icon_provider: Optional[QFileIconProvider] = None
+_icon_cache: Dict[str, QIcon] = {}
+
+def get_app_icon(app: Optional[InstalledApp], fallback: FIF = FIF.APPLICATION) -> QIcon:
+    """
+    Extracts high-resolution native Windows icons from .exe, .lnk, .ico, or fallback.
+    Caches QIcon instances in-memory for instant sorting and filtering.
+    """
+    global _icon_provider, _icon_cache
+    if not app:
+        return fallback.icon()
+
+    path = getattr(app, "resolved_icon_path", "") or (app.clean_icon_path() if hasattr(app, "clean_icon_path") else "")
+    if not path:
+        return fallback.icon()
+
+    if path in _icon_cache:
+        return _icon_cache[path]
+
+    # For standard image/ico files
+    if path.lower().endswith((".ico", ".png", ".jpg", ".jpeg", ".svg")):
+        ic = QIcon(path)
+        if not ic.isNull():
+            _icon_cache[path] = ic
+            return ic
+
+    # For Windows executables (.exe, .dll) and shortcuts (.lnk), use QFileIconProvider
+    if _icon_provider is None:
+        _icon_provider = QFileIconProvider()
+
+    try:
+        fi = QFileInfo(path)
+        ic = _icon_provider.icon(fi)
+        if not ic.isNull():
+            _icon_cache[path] = ic
+            return ic
+    except Exception:
+        pass
+
+    return fallback.icon()
 
 # -------------------------------------------------------------------------
 # Background Worker Threads
@@ -122,10 +163,7 @@ class LeftoverReviewDialog(QDialog):
         title_row = QHBoxLayout()
         icon_lbl = QLabel(self)
         icon_lbl.setFixedSize(36, 36)
-        if self.app and self.app.clean_icon_path():
-            icon_lbl.setPixmap(QIcon(self.app.clean_icon_path()).pixmap(36, 36))
-        else:
-            icon_lbl.setPixmap(FIF.APPLICATION.icon().pixmap(36, 36))
+        icon_lbl.setPixmap(get_app_icon(self.app).pixmap(36, 36))
         title_row.addWidget(icon_lbl)
 
         v_box = QVBoxLayout()
@@ -609,11 +647,7 @@ class UninstallerInterface(QWidget):
         for row, app in enumerate(self.filtered_apps):
             # Col 0: Program Name with Icon
             name_item = QTableWidgetItem(app.name)
-            icon_path = app.clean_icon_path()
-            if icon_path:
-                name_item.setIcon(QIcon(icon_path))
-            else:
-                name_item.setIcon(FIF.APPLICATION.icon())
+            name_item.setIcon(get_app_icon(app))
             name_item.setToolTip(f"Install Location: {app.install_location or 'Registry standard'}")
             self.table.setItem(row, 0, name_item)
 
