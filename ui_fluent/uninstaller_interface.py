@@ -206,7 +206,7 @@ class LeftoverReviewDialog(QDialog):
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
 
-        self.table.setVisible(False)
+        self.table.setVisible(True)
         self.layout.addWidget(self.table, 1)
 
         # Bulk selection toolbar (visible on Stage 3)
@@ -231,11 +231,29 @@ class LeftoverReviewDialog(QDialog):
 
         # Bottom Command Bar
         self.bottom_bar = QHBoxLayout()
+
+        self.btn_relaunch = PushButton("Relaunch Uninstaller", self)
+        self.btn_relaunch.setIcon(FIF.SYNC)
+        self.btn_relaunch.clicked.connect(self._relaunch_uninstaller)
+        self.btn_relaunch.setVisible(False)
+        self.bottom_bar.addWidget(self.btn_relaunch)
+
+        self.btn_rescan = PushButton("Rescan", self)
+        self.btn_rescan.setIcon(FIF.SYNC)
+        self.btn_rescan.clicked.connect(self._start_scan_stage)
+        self.btn_rescan.setVisible(False)
+        self.bottom_bar.addWidget(self.btn_rescan)
+
         self.bottom_bar.addStretch(1)
 
-        self.btn_cancel = PushButton("Close", self)
+        self.btn_cancel = PushButton("Cancel", self)
         self.btn_cancel.clicked.connect(self.close)
         self.bottom_bar.addWidget(self.btn_cancel)
+
+        self.btn_scan = PrimaryPushButton("Scan for Leftovers", self)
+        self.btn_scan.setIcon(FIF.SEARCH)
+        self.btn_scan.clicked.connect(self._start_scan_stage)
+        self.bottom_bar.addWidget(self.btn_scan)
 
         self.btn_clean = PrimaryPushButton("Delete Selected Leftovers (Safe)", self)
         self.btn_clean.setIcon(FIF.DELETE)
@@ -245,12 +263,37 @@ class LeftoverReviewDialog(QDialog):
 
         self.layout.addLayout(self.bottom_bar)
 
+    def _show_placeholder_row(self, message: str):
+        """Displays a full-width centered guidance row inside the table."""
+        self.table.clearSpans()
+        self.table.clearContents()
+        self.table.setRowCount(1)
+        item = QTableWidgetItem(message)
+        item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        item.setForeground(QColor("#94A3B8"))
+        item.setFlags(Qt.ItemFlag.NoItemFlags)
+        self.table.setItem(0, 0, item)
+        self.table.setSpan(0, 0, 1, 5)
+
     # -------------------------------------------------------------
-    # Stage 1: Run Native Uninstaller
+    # Stage 1: Run Native Uninstaller (Manual transition to scan)
     # -------------------------------------------------------------
     def _start_uninstall_stage(self):
-        self.lbl_status.setText("Running official uninstaller... Please complete the uninstaller dialog on your screen if prompted.")
-        self.progress_bar.setVisible(True)
+        self.lbl_status.setText(
+            "Official built-in uninstaller has been launched. Please complete the uninstallation wizard on your screen.\n"
+            "When finished, click 'Scan for Leftovers' below to search for remaining files and registry keys."
+        )
+        self.lbl_status.setStyleSheet("color: #38BDF8; font-weight: 500;")
+        self.progress_bar.setVisible(False)
+        self.btn_relaunch.setVisible(True)
+        self.btn_scan.setVisible(True)
+        self.btn_scan.setEnabled(True)
+        self.btn_scan.setText("Scan for Leftovers")
+        self.btn_scan.setIcon(FIF.SEARCH)
+        self.btn_clean.setVisible(False)
+        self.btn_rescan.setVisible(False)
+        self.btn_cancel.setText("Cancel")
+        self._show_placeholder_row("Official uninstaller is running... Complete the uninstallation on your screen, then click 'Scan for Leftovers' below.")
 
         self.uninstall_worker = UninstallWorker(self.app_manager, self.app, self)
         self.uninstall_worker.finished.connect(self._on_uninstaller_finished)
@@ -258,26 +301,43 @@ class LeftoverReviewDialog(QDialog):
         self.uninstall_worker.start()
 
     def _on_uninstaller_finished(self, exit_code: int):
-        self._start_scan_stage()
+        self.lbl_status.setText(
+            "✓ Official uninstaller process completed! Click 'Scan for Leftovers' below to search for residual files and registry entries."
+        )
+        self.lbl_status.setStyleSheet("color: #4ADE80; font-weight: bold;")
+        self.btn_scan.setText("Next: Scan for Leftovers")
+        self.btn_scan.setFocus()
+        self._show_placeholder_row("Official uninstaller finished. Click 'Next: Scan for Leftovers' below to search for residual files.")
 
     def _on_uninstaller_error(self, error_msg: str):
-        InfoBar.warning(
-            title="Uninstaller Warning",
-            content=f"Could not launch standard uninstaller: {error_msg}. Proceeding directly to leftover scan.",
-            orient=Qt.Orientation.Horizontal,
-            isClosable=True,
-            position=InfoBarPosition.TOP,
-            duration=5000,
-            parent=self
+        self.lbl_status.setText(
+            f"Uninstaller notification: {error_msg}. Click 'Scan for Leftovers' below to clean up remnants."
         )
-        self._start_scan_stage()
+        self.lbl_status.setStyleSheet("color: #F59E0B; font-weight: bold;")
+        self.btn_scan.setText("Scan for Leftovers")
+        self._show_placeholder_row("Click 'Scan for Leftovers' below to search for residual files.")
+
+    def _relaunch_uninstaller(self):
+        if self.app:
+            try:
+                self.app_manager.run_uninstaller(self.app)
+                self.lbl_status.setText("Official uninstaller launched again. Please complete it on your screen.")
+                self.lbl_status.setStyleSheet("color: #38BDF8;")
+            except Exception as e:
+                self.lbl_status.setText(f"Could not relaunch uninstaller: {e}")
 
     # -------------------------------------------------------------
-    # Stage 2: Deep Leftover Scan
+    # Stage 2: Deep Leftover Scan (Manual trigger)
     # -------------------------------------------------------------
     def _start_scan_stage(self):
         self.lbl_status.setText("Scanning for leftover files, folders, AppData, and registry entries...")
+        self.lbl_status.setStyleSheet("color: #94A3B8;")
         self.progress_bar.setVisible(True)
+        self.btn_relaunch.setVisible(False)
+        self.btn_rescan.setVisible(False)
+        self.btn_scan.setEnabled(False)
+        self.btn_scan.setText("Scanning...")
+        self._show_placeholder_row("Scanning for residual files, AppData, and registry entries...")
 
         pub = self.app.publisher if self.app else ""
         loc = self.app.install_location if self.app else ""
@@ -293,12 +353,17 @@ class LeftoverReviewDialog(QDialog):
 
     def _on_scan_finished(self, items: List[LeftoverItem]):
         self.progress_bar.setVisible(False)
+        self.btn_scan.setVisible(False)
         self.leftover_items = items
 
         if not items:
             self.lbl_status.setText("✓ No leftover files or registry keys detected! Clean uninstallation.")
             self.lbl_status.setStyleSheet("color: #4ADE80; font-weight: bold;")
             self.btn_cancel.setText("Done")
+            self.btn_clean.setVisible(False)
+            self.btn_rescan.setVisible(True)
+            self.bulk_container.setVisible(False)
+            self._show_placeholder_row("✓ No leftover files, folders, or registry keys detected.")
             return
 
         # Stage 3: Present leftovers
@@ -311,9 +376,11 @@ class LeftoverReviewDialog(QDialog):
         self.lbl_status.setText(summary_msg)
         self.lbl_status.setStyleSheet("color: #F59E0B; font-weight: bold;")
 
+        self.table.clearSpans()
         self.table.setVisible(True)
         self.bulk_container.setVisible(True)
         self.btn_clean.setVisible(True)
+        self.btn_rescan.setVisible(True)
         self.btn_cancel.setText("Skip / Cancel")
 
         self._populate_table()
@@ -321,13 +388,19 @@ class LeftoverReviewDialog(QDialog):
 
     def _on_scan_error(self, err: str):
         self.progress_bar.setVisible(False)
+        self.btn_scan.setEnabled(True)
+        self.btn_scan.setText("Retry Scan")
+        self.btn_rescan.setVisible(True)
         self.lbl_status.setText(f"Scan error: {err}")
         self.lbl_status.setStyleSheet("color: #F87171;")
+        self._show_placeholder_row(f"Scan error: {err}")
 
     # -------------------------------------------------------------
     # Stage 3: Populate and Manage Leftovers Table
     # -------------------------------------------------------------
     def _populate_table(self):
+        self.table.clearSpans()
+        self.table.clearContents()
         self.table.setRowCount(len(self.leftover_items))
         for row, item in enumerate(self.leftover_items):
             # Checkbox
